@@ -14,10 +14,11 @@ from tfutils import *
 
 
 
-CLASS_EMBEDDING_SIZE = 128
-FAKE_LABEL_CHANCE = 0.6
+CLASS_EMBEDDING_SIZE = 80
+FAKE_LABEL_CHANCE = 0.4
+RESIDUALS = 2
 
-PARENT_MODEL = resnet
+PARENT_MODEL = alexnet
 BS = 24
 
 TRAINABLE = True
@@ -33,9 +34,12 @@ to_init = []
 images = tf.placeholder(tf.float32, (BS, 224, 224, 3))
 labels = tf.placeholder(tf.int32, (BS,))
 
-is_class_present = tf.cast(tf.random_uniform((BS,), 0, 1, dtype=tf.float32) > FAKE_LABEL_CHANCE, tf.float32)
+is_class_present = tf.cast(tf.random_uniform((BS,), 0, 1, dtype=tf.float32) > FAKE_LABEL_CHANCE, tf.int32)
 fake_labels= tf.random_uniform((BS,), 0, 1000, dtype=tf.int32)
-class_selector = labels*is_class_present * (1-is_class_present)*fake_labels
+class_selector = labels*is_class_present + (1-is_class_present)*fake_labels
+
+# 1 in a 1000 chance that fake label is actually real :) Therefore:
+is_class_present = tf.cast(tf.equal(labels, class_selector), tf.int32)
 
 # Create masker model, U-Net like architecture with ResNet-50 extractor. Generated mask will be 112x112
 with tf.variable_scope('masker'):
@@ -61,10 +65,10 @@ with tf.variable_scope('masker'):
     res112 = get_tensor_as_constant('masker/extractor/scale1/Relu:0')
 
     # now construct the remaining, upsampler part of the U-Net
-    up1 = UpsamplerBlock(512, True, 1) # 14x14
-    up2 = UpsamplerBlock(256, True, 1) # 28x28
-    up3 = UpsamplerBlock(128, True, 1) # 56x56
-    up4 = UpsamplerBlock(64, True, 1) # 112x112
+    up1 = UpsamplerBlock(512, True, RESIDUALS) # 14x14
+    up2 = UpsamplerBlock(256, True, RESIDUALS) # 28x28
+    up3 = UpsamplerBlock(128, True, RESIDUALS) # 56x56
+    up4 = UpsamplerBlock(64, True, RESIDUALS) # 112x112
     to_mask = SimpleCNNBlock(1, 2, 1, 1, False, tf.abs)  # converts to the mask
 
     out14 = up1(res7, trainable=TRAINABLE, weights_collections=WEIGHT_COLLECTIONS, passthrough=res14)['final_output']
@@ -105,7 +109,7 @@ destroyer_loss = tf.reduce_mean(is_class_present_f32*((utils.loss_calc.abs_dista
 l2_loss = sum(map(tf.nn.l2_loss, tf.get_collection(WEIGHT_COLLECTIONS[0], 'masker')))
 
 
-full_loss = 0.0005*l2_loss + 12*mask_area_loss + 0.0001*mask_smoothness_loss + preservation_loss + 4*destroyer_loss
+full_loss = 0.0005*l2_loss + 12*mask_area_loss + 0.0001*mask_smoothness_loss + (preservation_loss + 4*destroyer_loss)/(1.-FAKE_LABEL_CHANCE)
 
 train_op = tf.train.MomentumOptimizer(0.03, 0.9, use_nesterov=True).minimize(full_loss)
 
@@ -126,12 +130,13 @@ with tf.Session() as sess:
                          'resulting_img': preserved_imgs,
                          'mask': mask,
                          'probs': preserved_probs,
-                         'probs_cif1': preserved_probs,
-                         'probs_cif2': preserved_probs
+                         'class_selector': class_selector,
+                         'is_class_present': is_class_present,
+                         'pr': tf.reduce_mean(100*is_class_present),
                      },
-                     printable_vars=['a', 's', 'p', 'd'],
+                     printable_vars=['a', 's', 'p', 'd', 'pr'],
                      computed_variables={
-                         'rep': utils.rep.rep_op(224, imagenet.to_bgr_img, validation_only=False)
+                         'rep': utils.rep.rep_op2(224, imagenet.to_bgr_img, imagenet.CLASS_ID_TO_NAME, validation_only=False)
                      })
 
     nt.train()
