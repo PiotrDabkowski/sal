@@ -1,9 +1,10 @@
 import tensorflow as tf
 import numpy as np
-import imagenet
 
+IMAGE_NET_PIXEL_MEAN = 256.0*np.array([0.485, 0.456, 0.406])
+IMAGE_NET_PIXEL_STD = 256.0*np.array([0.229, 0.224, 0.225])
 
-CKPT = 'alexnet/model.ckpt'
+CKPT = '/home/piter/PycharmProjects/sal2/ckpts/alexnet.ckpt'
 
 def conv(input, kernel, biases, k_h, k_w, c_o, s_h, s_w, padding="VALID", group=1):
     '''From https://github.com/ethereon/caffe-tensorflow
@@ -27,7 +28,7 @@ def conv(input, kernel, biases, k_h, k_w, c_o, s_h, s_w, padding="VALID", group=
 def inference(images, trainable, reuse):
     ''' images are in rgb format returned by imagenet batch manager (zero mean std of 1)'''
     bgr = tf.concat((tf.expand_dims(images[:, :, :, 2], 3), tf.expand_dims(images[:, :, :, 1], 3),
-                  tf.expand_dims(images[:, :, :, 0], 3)), 3) * imagenet.IMAGE_NET_PIXEL_STD
+                  tf.expand_dims(images[:, :, :, 0], 3)), 3) * IMAGE_NET_PIXEL_STD
 
     scope = tf.get_variable_scope()
     old_reuse = scope.reuse

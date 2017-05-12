@@ -3,6 +3,8 @@ from tfutils import *
 from config import *
 import time
 import warnings
+import random
+
 
 # -------------------------------------------
 synset = open(os.path.join(os.path.dirname(__file__), 'synset.txt')).read()
@@ -95,6 +97,14 @@ VAL_PIPELINE = for_each(parallelise_ops([
 ]))
 
 
+
+def load_normalized_without_resize(path):
+    return compose_ops([
+        load(),
+        normalize(IMAGE_NET_PIXEL_MEAN, IMAGE_NET_PIXEL_STD)
+    ])(path)
+
+
 def from_rgb(rgb):
     return compose_ops([
         square_centrer_crop_resize(IMAGE_SIZE),
@@ -134,7 +144,7 @@ def get_val_bm(batch_size, float16=False):
         val_batch_composer(np.float32 if not float16 else np.float16, np.int32),
         batch_size/NUM_VALIDATION_IMGS_PER_EXAMPLE,
         shuffle_examples=True,
-        num_workers=6
+        num_workers=1
     )
 
 def to_rgb_img(im):

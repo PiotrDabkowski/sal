@@ -1,9 +1,14 @@
-import resnet
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__))))
+
 import tensorflow as tf
-from meta_restorer import restore_in_scope
-import alexnet
+from utils import meta_restorer
+from datasets import imagenet
 from tfutils import *
-import imagenet
+from blocks import alexnet
+
+
 
 # 80.5 percent top 5 with 10 crop validation and 79 % with single centre crop. AlexNet is pretty bad. Loss 2
 sess = tf.Session()
@@ -22,7 +27,7 @@ with tf.variable_scope('r1', reuse=True):
     probs2 = tf.nn.softmax(p2)
 
 
-restore_op = restore_in_scope('alexnet/model.ckpt', 'r1')
+restore_op = meta_restorer.restore_in_scope(alexnet.CKPT, 'r1')
 sess.run(restore_op)
 
 

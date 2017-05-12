@@ -1,7 +1,11 @@
-import resnet
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__))))
+
+from blocks import resnet
 import tensorflow as tf
-from meta_restorer import restore_in_scope
-import imagenet
+from utils import meta_restorer
+from datasets import imagenet
 from tfutils import *
 
 # 92.6% 10 crop validation and 91.5% 1 crop top 5 acc. Loss 1
@@ -20,9 +24,11 @@ with tf.variable_scope('r1'):
     p2 = resnet.inference(images2, False, True)
     probs2 = tf.nn.softmax(p2)
 
+for e in [n.name for n in tf.get_default_graph().as_graph_def().node]:
+    print e
+exit()
 
-
-restore_op = restore_in_scope('resnet50/ResNet-L50', 'r1')
+restore_op = meta_restorer.restore_in_scope(resnet.CKPT, 'r1')
 sess.run(restore_op)
 
 

@@ -30,10 +30,15 @@ NUM_VALIDATION_IMGS_PER_EXAMPLE = len(VALIDATION_CROPS) * (bool(VALIDATION_USE_F
 print 'NUM VAL' , NUM_VALIDATION_IMGS_PER_EXAMPLE
 assert NUM_VALIDATION_IMGS_PER_EXAMPLE >= 1
 
-TRAIN_IMAGES = get_images_op(IMAGE_NET_TRAIN_PATH)
-VAL_IMAGES = get_images_op(IMAGE_NET_VAL_PATH)
-random.shuffle(VAL_IMAGES)
-#VAL_IMAGES = VAL_IMAGES[:5000]
+try:
+    TRAIN_IMAGES = get_images_op(IMAGE_NET_TRAIN_PATH)
+    VAL_IMAGES = get_images_op(IMAGE_NET_VAL_PATH)
+    random.shuffle(VAL_IMAGES)
+    #VAL_IMAGES = VAL_IMAGES[:5000]
+except:
+    print 'Specified cifar10 dataset folder was not found'
+    TRAIN_IMAGES = []
+    VAL_IMAGES = []
 
 # -------------------------------------------
 

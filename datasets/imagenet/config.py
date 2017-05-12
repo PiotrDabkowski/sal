@@ -1,5 +1,6 @@
 IMAGE_NET_TRAIN_PATH = '/home/piter/ImageNetFull/train/'
 IMAGE_NET_VAL_PATH = '/home/piter/ImageNetFull/val/'
+BOXES_PATH = '/home/piter/ImageNetFull/valBoxes'
 
 IMAGE_SIZE = (224, 224)
 

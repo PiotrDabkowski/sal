@@ -6,8 +6,9 @@ import tensorflow as tf
 from tensorflow.core.protobuf import saver_pb2
 import time
 
+IMAGE_NET_PIXEL_MEAN = 256.0*np.array([0.485, 0.456, 0.406])
+IMAGE_NET_PIXEL_STD = 256.0*np.array([0.229, 0.224, 0.225])
 
-import imagenet
 
 VGG_MEAN = [103.939, 116.779, 123.68]
 
@@ -149,7 +150,7 @@ def inference(images, trainable, reuse):
     old_reuse = scope.reuse
     scope._reuse = reuse
 
-    x = (images * imagenet.IMAGE_NET_PIXEL_STD + imagenet.IMAGE_NET_PIXEL_MEAN) / 255.0
+    x = (images * IMAGE_NET_PIXEL_STD + IMAGE_NET_PIXEL_MEAN) / 255.0
     v = Vgg16(trainable=trainable)
     v.build(x)
 
