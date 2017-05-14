@@ -6,7 +6,9 @@ import numpy as np
 
 
 def multi_coord_support(f):
-    def func(self, xy):
+    def func(self, *xy):
+        if len(xy)==1:
+            xy = xy[0]
         assert len(xy)%2==0, 'Coords must be given in pairs xyxyxyxy...'
         res = ()
         for i in xrange(0, len(xy), 2):
@@ -55,9 +57,9 @@ class ImageCropper(BaseImageConverter):
         self.resulting_shape = rh, rw
         template = np.zeros((rh, rw, c), dtype=np.float32)
         self.real_x_range = map(lambda x: min(max(0, x), w), x_range)
-        self.real_y_range = map(lambda y: min(max(0, y), h), x_range)
-        self.template_x_offset = min(0, -x_range[0])
-        self.template_y_offset = min(0, -y_range[0])
+        self.real_y_range = map(lambda y: min(max(0, y), h), y_range)
+        self.template_x_offset = max(0, -x_range[0])
+        self.template_y_offset = max(0, -y_range[0])
         template[
             self.template_y_offset : self.template_y_offset + self.real_y_range[1] - self.real_y_range[0],
             self.template_x_offset : self.template_x_offset + self.real_x_range[1] - self.real_x_range[0],
@@ -106,4 +108,31 @@ class ImageResizer(BaseImageConverter):
     def _to_local_coords(self, xy):
         x, y = xy
         return int(round(x / self.x_scale)), int(round(y / self.y_scale))
+
+
+
+class FixedAspectRatioNoCropping:
+    def __init__(self, img, desired_side_length):  #must be a square for now, easy to extend to rect
+        h, w, c = img.shape
+        short = min(w, h)
+        long = max(w, h)
+        off = (long-short)/2
+        if w < h:
+            self.i1 = ImageCropper(img, (-off, -off+long), (0, long))
+        else:
+            self.i1 = ImageCropper(img, (0, long), (-off, -off + long))
+        self.i2 = ImageResizer(self.i1.get_resulting_img(), (desired_side_length, desired_side_length))
+        self.resulting_img = self.i2.get_resulting_img()
+        self.original_image = img
+
+    def get_resulting_img(self):
+        return self.resulting_img
+
+    @multi_coord_support
+    def from_local_coords(self, xy):
+        return self.i1.from_local_coords(self.i2.from_local_coords(xy))
+
+    @multi_coord_support
+    def to_local_coords(self, xy):
+        return self.i2.to_local_coords(self.i1.to_local_coords(xy))
 

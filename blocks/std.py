@@ -325,7 +325,7 @@ class CustomLinearBlock(MagicBlock):
 class UpsamplerBlock(MagicBlock):
     SUPPORTED_CONTAINERS = {'LinearContainer', 'UNetContainer'}
 
-    def __init__(self, num_chans, receive_passthrough, follow_up_residual_blocks, passthrough_relative_chan_size=1, deconv_kernel_size=2, deconv_stride=2, activation_fn=tf.nn.elu):
+    def __init__(self, num_chans, receive_passthrough, follow_up_residual_blocks, passthrough_relative_chan_size=1, deconv_kernel_size=2, deconv_stride=2, activation_fn=tf.nn.elu, scale=True):
         self.num_chans = num_chans
         self.deconv_kernel_size = deconv_kernel_size
         self.deconv_stride =deconv_stride
@@ -334,10 +334,11 @@ class UpsamplerBlock(MagicBlock):
         self.follow_up_residual_blocks = follow_up_residual_blocks
         self.passthrough_relative_chan_size = passthrough_relative_chan_size
         self._passthrough_ratio = self.deconv_stride
+        self.scale = scale
 
 
     def __call__(self, inp, trainable, weights_collections, **extra_params):
-        batch_norm_params = {'updates_collections': None, 'is_training': trainable,
+        batch_norm_params = {'updates_collections': None, 'is_training': trainable, 'scale': self.scale,
                              'trainable': trainable}
         assert not isinstance(weights_collections, basestring), 'Must be a list of collections!'
         variable_collections = None if weights_collections is None else {'weights': weights_collections}
@@ -381,7 +382,7 @@ class UpsamplerBlock(MagicBlock):
                     blocks = self.follow_up_residual_blocks
                 for _ in xrange(blocks):
                     out = dense_net.bottleneck_block(out, self.num_chans, stride=1, training=trainable,
-                                           weights_collections=weights_collections, scale=False,
+                                           weights_collections=weights_collections, scale=self.scale,
                                            activation=self.activation_fn)
         return {'final_output': out}
 

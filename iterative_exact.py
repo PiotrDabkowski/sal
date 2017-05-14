@@ -36,7 +36,7 @@ CKPT = resnet.CKPT
 
 # How many images to optimise for at the given time
 BATCH_SIZE = 2
-MASK_SIZE = 25   # if lower it will be resized to 224 anyway...
+MASK_SIZE = 28   # if lower it will be resized to 224 anyway...
 
 images = tf.get_variable('images', (BATCH_SIZE, 224, 224, 3), dtype=tf.float32, trainable=False)
 labels = tf.get_variable('labels', (BATCH_SIZE,), dtype=tf.int32, trainable=False)
@@ -47,12 +47,12 @@ vals = tf.get_variable('mvals', (BATCH_SIZE, MASK_SIZE, MASK_SIZE), dtype=tf.flo
 masks =   tf.clip_by_value(vals, 0., 1.) # tf.nn.tanh(vals)/2. + 0.5
 if MASK_SIZE != 224:
     masks = tf.squeeze(tf.image.resize_bilinear(tf.expand_dims(masks, 3), (224, 224)))
-    #masks = tf.squeeze(utils.gaussian.gaussian_blur(tf.image.resize_bilinear(tf.expand_dims(masks, 3), (224, 224)), 15, 2))
+    masks = tf.squeeze(utils.gaussian.gaussian_blur(tf.image.resize_bilinear(tf.expand_dims(masks, 3), (224, 224)), 15, 2))
 showable_masks = tf.concat((255*tf.expand_dims(masks, 3), tf.zeros((BATCH_SIZE, 224, 224, 2))), 3)
 
 
-preserved_images = utils.mask.apply_mask(images, masks, random_colors=True, noise=True, blurred_version_prob=0.3, blur_sigma=9, blur_kernel=37)
-destroyed_images = utils.mask.apply_mask(images, 1.-masks, random_colors=True, noise=True, blurred_version_prob=0.3, blur_sigma=9, blur_kernel=37)
+preserved_images = utils.mask.apply_mask(images, masks, random_colors=True, noise=True, blurred_version_prob=1., blur_sigma=10, blur_kernel=41)
+destroyed_images = utils.mask.apply_mask(images, 1.-masks, random_colors=True, noise=True, blurred_version_prob=1., blur_sigma=10, blur_kernel=41)
 
 # feed the resulting images to the model
 all_images = tf.concat((preserved_images, destroyed_images), 0)
@@ -66,19 +66,19 @@ def satisfactory_reduction(x, sat):
     return tf.nn.relu(x-sat)+sat
 
 # now the losses...
-area_loss = utils.mask.area_loss(masks)
-smoothness_loss = utils.mask.smoothness_loss(masks)
+area_loss = utils.mask.area_loss(vals)
+smoothness_loss = utils.mask.smoothness_loss(vals)
 
 # not sure how these 2 should exactly be defined...
-preservation_loss = tf.reduce_mean(utils.loss_calc.abs_distance_loss(logits=tf.nn.softmax(preserved_scores), labels=labels, ref=1.))
-destroyer_loss = tf.reduce_mean((utils.loss_calc.abs_distance_loss(logits=tf.nn.softmax(destroyed_scores), labels=labels, ref=0.)+0.0005)**0.33)
+preservation_loss = 0*tf.reduce_mean(utils.loss_calc.abs_distance_loss(logits=tf.nn.softmax(preserved_scores), labels=labels, ref=1.))
+destroyer_loss = tf.reduce_mean((utils.loss_calc.abs_distance_loss(logits=tf.nn.softmax(destroyed_scores), labels=labels, ref=0.)+0.0005)**1)
 #preservation_loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=preserved_scores, labels=labels))
 #destroyer_loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=-destroyed_scores, labels=labels))
 
 # compose the full loss, area and smoothness coefs are quite important
 
-full_loss =  BATCH_SIZE*(0.15*smoothness_loss + 0.6*area_loss + preservation_loss + 2*destroyer_loss)/16.
-opt_op = tf.train.AdamOptimizer(0.02).minimize(full_loss, var_list=[vals])
+full_loss =  0.01*smoothness_loss + 0.05*area_loss + preservation_loss + destroyer_loss
+opt_op = tf.train.AdamOptimizer(0.05).minimize(full_loss, var_list=[vals])
 assert len(tf.trainable_variables())==1
 
 # this is how you reset the images, just run reset_all with new_images and new_labels in feed_dict
@@ -137,10 +137,10 @@ with tf.Session() as sess:
                         ious.append(utils.bounding_box.intersection_over_union(_gt_box_in_local, box))
                     all_ious.append(max(ious))
                     print 'IOU', max(ious)
-                    pi0 = utils.bounding_box.draw_box(pi0, box, text='%.3f' % pl)
+                    pi0 = utils.bounding_box.draw_box(pi0, box, text='%.3f' % dl)
 
                     mi0 = mi[example].astype(np.uint8)
-                    mi0[mi0<0.6*255] = 0
+                    #mi0[mi0<0.6*255] = 0
                     cv2.imwrite('iter%d.jpg'%example, np.concatenate((pi0, di0, mi0), 0))
             i+=1
         print 'Cumulative accuracy from %d examples' % len(all_ious), np.mean(np.array(all_ious)>0.5)

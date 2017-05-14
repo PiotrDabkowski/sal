@@ -17,7 +17,7 @@ def smoothness_loss(mask, power=2, border_penalty=True):
     else:
         x_loss = tf.reduce_sum((tf.abs(mask[:, 1:, :] - mask[:, :-1, :])) ** power)
         y_loss = tf.reduce_sum((tf.abs(mask[:, :, 1:] - mask[:, :, :-1])) ** power)
-    return (x_loss + y_loss) / (2. * n)  # watch out, normalised by batch size!
+    return (x_loss + y_loss) / float(power * n)  # watch out, normalised by batch size!
 
 
 def area_loss(mask, power=1., satisfactory_reduction=0.):

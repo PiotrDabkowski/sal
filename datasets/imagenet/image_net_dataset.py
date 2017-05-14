@@ -144,7 +144,7 @@ def get_val_bm(batch_size, float16=False):
         val_batch_composer(np.float32 if not float16 else np.float16, np.int32),
         batch_size/NUM_VALIDATION_IMGS_PER_EXAMPLE,
         shuffle_examples=True,
-        num_workers=1
+        num_workers=5
     )
 
 def to_rgb_img(im):
