@@ -3,12 +3,12 @@ import numpy as np
 import cv2
 CENTER_CROP = (32, 32, 192, 192)
 
-def box_from_mask(mask, threshold=0.5*255, eps=4, min_samples=5, min_members=300):
+def box_from_mask(mask, threshold=0.5*255, eps=4, min_samples=5, min_members=300, return_center_crop_on_failure=True):
     ''' mask should be (H, W) np array'''
     dbscan = DBSCAN(eps=eps, min_samples=min_samples)
     mpoints = np.asarray(zip(*(mask > threshold).nonzero()))
     if len(mpoints)<10:
-        return CENTER_CROP
+        return CENTER_CROP if return_center_crop_on_failure else None
     dbscan.fit(mpoints)
     labels = dbscan.labels_
     clus = {}
@@ -20,7 +20,7 @@ def box_from_mask(mask, threshold=0.5*255, eps=4, min_samples=5, min_members=300
             clus[label] = members
     # now select the largest cluster and make it np array
     if not clus:
-        return CENTER_CROP  # something went wrong, just return the centre crop...
+        return CENTER_CROP if return_center_crop_on_failure else None # something went wrong, just return the centre crop...
     clusters = np.array(sorted(clus.values(), key=lambda x: len(x), reverse=True)[0])
     maxes = np.max(clusters, axis=0)
     mins = np.min(clusters, axis=0)

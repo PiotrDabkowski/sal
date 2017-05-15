@@ -1,11 +1,14 @@
 import tensorflow as tf
 from resnet_utils import *
 import numpy as np
+import os
 
 IMAGE_NET_PIXEL_MEAN = 256.0*np.array([0.485, 0.456, 0.406])
 IMAGE_NET_PIXEL_STD = 256.0*np.array([0.229, 0.224, 0.225])
 
 CKPT = '/home/piter/PycharmProjects/sal2/ckpts/resnet50.ckpt'
+if not os.path.exists(CKPT):
+    CKPT = '/Users/PiotrDabkowski/PycharmProjects/sal2/ckpts/resnet50.ckpt'
 
 def _inference(x, is_training,
                reuse,

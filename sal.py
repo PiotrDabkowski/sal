@@ -21,7 +21,7 @@ DECONV_KERNEL = 2
 OPTIMIZE_CLS_EMBEDDING = False
 
 PARENT_MODEL = resnet
-BS = 2
+BS = 1
 
 TRAINABLE = False
 WEIGHT_COLLECTIONS = ['chuje433314']
@@ -146,25 +146,25 @@ pretrained_embedding = tf.placeholder(tf.float32, (1000, CLASS_EMBEDDING_SIZE))
 set_embedding = tf.assign(class_embedding, pretrained_embedding)
 
 DID_INIT=False
-def get_bbs(sess, imgs_, labels_):
+def get_bbs(sess, imgs_, labels_, return_center_crop_on_failure=True):
     global DID_INIT
     if not DID_INIT:
         #sess.run(tf.global_variables_initializer())
         tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, 'masker')).restore(sess, tf.train.get_checkpoint_state('temp_ckpts/masker1/').model_checkpoint_path)
         sess.run(tf.group(*to_init))
         sess.run(set_embedding, {pretrained_embedding: np.load('temp_ckpts/clsemb.npy')})
+        print 'Finished inits...'
         DID_INIT = True
     masks = sess.run(mask, {images: imgs_, labels: labels_})
     for e in xrange(len(masks)):
-        print imagenet.CLASS_ID_TO_NAME[labels_[e]]
         r = np.concatenate((imagenet.to_bgr_img(imgs_[e]), (np.zeros((224, 224, 3)) + np.expand_dims((255 * masks[e]), 2)).astype(np.uint8)), 0)
         cv2.imwrite('ss%d.jpg'%e, r)
     # exit()
     bbs = []
     for m in masks:
         # for each generated mask perform density based clustering and return...
-        bbs.append(utils.bounding_box.box_from_mask(m, threshold=0.6, min_members=300))
-    return bbs
+        bbs.append(utils.bounding_box.box_from_mask(m, threshold=0.6, min_members=300, return_center_crop_on_failure=return_center_crop_on_failure))
+    return bbs, masks
 
 
 if __name__=='__main__':

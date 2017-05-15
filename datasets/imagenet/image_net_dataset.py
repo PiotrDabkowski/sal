@@ -114,6 +114,9 @@ def from_rgb(rgb):
 def from_bgr(bgr):
     return from_rgb(bgr[:,:,[2,1,0]])
 
+def from_bgr_normalize_only(bgr):
+    return normalize(IMAGE_NET_PIXEL_MEAN, IMAGE_NET_PIXEL_STD)(bgr[:,:,[2,1,0]].astype(np.float32))
+
 def val_batch_composer(type_data, type_label):
     def generic_batch_composer_op(examples):
         data = [k for e in examples for k in e[0]]

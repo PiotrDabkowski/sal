@@ -13,7 +13,7 @@ import sal
 
 # Some params
 FAKE_PROVIDER = lambda sess, ims, labels: (0, 0, 200, 200)
-BATCH_SIZE = 2
+BATCH_SIZE = 25
 PROVIDER = sal.get_bbs
 
 VAL_IMGS = cPickle.load(open('ckpts/VAL_IMGS.cpi', 'rb'))[:2500]
