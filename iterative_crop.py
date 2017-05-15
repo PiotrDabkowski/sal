@@ -116,8 +116,8 @@ def get_bb(sess, img, label):
         sess.run(init_op)
         DID_INIT = True
     sess.run(reset_all, {
-        new_images: np.expand_dims(img, 0),
-        new_labels: (label,)
+        new_images: img,
+        new_labels: label,
     })
     i = 0
     min_loss = float('inf')
@@ -132,7 +132,7 @@ def get_bb(sess, img, label):
             h0 = int(h * 224)
             min_loss = fl
         i+=1
-    return (x0, y0, x0+w0, y0+h0)
+    return [(x0, y0, x0+w0, y0+h0)]
 
 
 

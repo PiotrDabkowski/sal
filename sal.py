@@ -10,21 +10,20 @@ import utils.rep
 from tensorflow.contrib import layers as tf_layers
 from datasets import imagenet
 from tfutils import *
-from sklearn.manifold import TSNE
-
+import utils.bounding_box
 
 
 
 CLASS_EMBEDDING_SIZE = 2048
-FAKE_LABEL_CHANCE = 0.2
+FAKE_LABEL_CHANCE = 0.
 RESIDUALS = 3
 DECONV_KERNEL = 2
 OPTIMIZE_CLS_EMBEDDING = False
 
 PARENT_MODEL = resnet
-BS = 24
+BS = 2
 
-TRAINABLE = True
+TRAINABLE = False
 WEIGHT_COLLECTIONS = ['chuje433314']
 
 
@@ -146,39 +145,64 @@ train_op = tf.train.MomentumOptimizer(0.03, 0.9, use_nesterov=True).minimize(ful
 pretrained_embedding = tf.placeholder(tf.float32, (1000, CLASS_EMBEDDING_SIZE))
 set_embedding = tf.assign(class_embedding, pretrained_embedding)
 
-with tf.Session() as sess:
-    sess.run(tf.global_variables_initializer())
-    sess.run(tf.group(*to_init))
-    emb2 = sess.run(resnet_emb).T
-    sess.run(set_embedding, {pretrained_embedding: np.load('temp_ckpts/clsemb.npy')})
+DID_INIT=False
+def get_bbs(sess, imgs_, labels_):
+    global DID_INIT
+    if not DID_INIT:
+        #sess.run(tf.global_variables_initializer())
+        tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, 'masker')).restore(sess, tf.train.get_checkpoint_state('temp_ckpts/masker1/').model_checkpoint_path)
+        sess.run(tf.group(*to_init))
+        sess.run(set_embedding, {pretrained_embedding: np.load('temp_ckpts/clsemb.npy')})
+        DID_INIT = True
+    masks = sess.run(mask, {images: imgs_, labels: labels_})
+    for e in xrange(len(masks)):
+        print imagenet.CLASS_ID_TO_NAME[labels_[e]]
+        r = np.concatenate((imagenet.to_bgr_img(imgs_[e]), (np.zeros((224, 224, 3)) + np.expand_dims((255 * masks[e]), 2)).astype(np.uint8)), 0)
+        cv2.imwrite('ss%d.jpg'%e, r)
+    # exit()
+    bbs = []
+    for m in masks:
+        # for each generated mask perform density based clustering and return...
+        bbs.append(utils.bounding_box.box_from_mask(m, threshold=0.6, min_members=300))
+    return bbs
 
-    bm_train = imagenet.get_train_bm(BS)
-    bm_val = imagenet.get_val_bm(BS)
 
-    nt = NiceTrainer(sess, bm_val, [images, labels], train_op, bm_val,
-                     extra_variables={
-                         'a': mask_area_loss,
-                         's': mask_smoothness_loss,
-                         'p': preservation_loss,
-                         'd': destroyer_loss,
-                         'resulting_img': preserved_imgs,
-                         'mask': mask,
-                         'probs': preserved_probs,
-                         'class_selector': class_selector,
-                         'is_class_present': is_class_present,
-                         'e': exists_loss,
-                         'disp': disp_check,
-                         'p0': params[0],
-                         'p1': params[1],
-                     },
-                     printable_vars=['a', 's', 'p', 'd', 'e', 'disp', 'p0', 'p1'],
-                     computed_variables={
-                         'rep': utils.rep.rep_op2(224, imagenet.to_bgr_img, imagenet.CLASS_ID_TO_NAME, validation_only=False)
-                     },
-                     saver=tf.train.Saver(tf.global_variables()),
-                     save_every=500,
-                     save_dir='temp_ckpts/globmask')
-    nt.restore()
-    nt.validate()
-   # nt.save()
+if __name__=='__main__':
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        sess.run(tf.group(*to_init))
+        #emb2 = sess.run(resnet_emb).T
+        sess.run(set_embedding, {pretrained_embedding: np.load('temp_ckpts/clsemb.npy')})
+
+        bm_train = imagenet.get_train_bm(BS)
+        bm_val = imagenet.get_val_bm(BS)
+
+        nt = NiceTrainer(sess, bm_val, [images, labels], train_op, bm_val,
+                         extra_variables={
+                             'a': mask_area_loss,
+                             's': mask_smoothness_loss,
+                             'p': preservation_loss,
+                             'd': destroyer_loss,
+                             'resulting_img': preserved_imgs,
+                             'mask': mask,
+                             'probs': preserved_probs,
+                             'class_selector': class_selector,
+                             'is_class_present': is_class_present,
+                             'e': exists_loss,
+                             'disp': disp_check,
+                             'p0': params[0],
+                             'p1': params[1],
+                         },
+                         printable_vars=['a', 's', 'p', 'd', 'e', 'disp', 'p0', 'p1'],
+                         computed_variables={
+                             'rep': utils.rep.rep_op2(224, imagenet.to_bgr_img, imagenet.CLASS_ID_TO_NAME, validation_only=False),
+                         },
+                         saver=tf.train.Saver(tf.global_variables()),
+                         save_every=500,
+                         save_dir='temp_ckpts/globmask')
+        nt.restore()
+
+        tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, 'masker')).save(sess, 'temp_ckpts/masker1/model', global_step=1)
+        nt.validate()
+       # nt.save()
 

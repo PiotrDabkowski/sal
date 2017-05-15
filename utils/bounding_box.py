@@ -1,7 +1,7 @@
 from sklearn.cluster import DBSCAN
 import numpy as np
 import cv2
-CENTER_CROP = (32, 192, 32, 192)
+CENTER_CROP = (32, 32, 192, 192)
 
 def box_from_mask(mask, threshold=0.5*255, eps=4, min_samples=5, min_members=300):
     ''' mask should be (H, W) np array'''
