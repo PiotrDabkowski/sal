@@ -163,7 +163,7 @@ def get_bbs(sess, imgs_, labels_, return_center_crop_on_failure=True):
     bbs = []
     for m in masks:
         # for each generated mask perform density based clustering and return...
-        bbs.append(utils.bounding_box.box_from_mask(m, threshold=0.6, min_members=300, return_center_crop_on_failure=return_center_crop_on_failure))
+        bbs.append(utils.bounding_box.simple_box_from_mask(m, threshold=0.5, min_members=300, return_center_crop_on_failure=return_center_crop_on_failure))
     return bbs, masks
 
 

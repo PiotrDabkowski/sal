@@ -203,6 +203,9 @@ def max_pool(x, ksize=3, stride=2):
                           padding='SAME')
 
 
+import numpy as np
+IMAGE_NET_PIXEL_MEAN = 256.0*np.array([0.485, 0.456, 0.406])
+IMAGE_NET_PIXEL_STD = 256.0*np.array([0.229, 0.224, 0.225])
 
 def imagenet_preprocess(rgb):
     """Changes RGB [0,1] valued image to BGR [0,255] with mean subtracted."""

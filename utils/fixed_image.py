@@ -89,8 +89,11 @@ class ImageCropper(BaseImageConverter):
 class ImageResizer(BaseImageConverter):
     def __init__(self, img, new_size):
         '''Much simpler than the cropper, simply resizes, size obviously is (h, w)'''
+        if type(new_size)==int:
+            new_size = (new_size, new_size)
         h, w, c = img.shape
         self.original_shape = h, w
+        self.original_image = img
         self.resulting_shape = new_size
         self.resulting_img = cv2.resize(img, new_size, interpolation=cv2.INTER_LINEAR)
         self.y_scale = float(h)/new_size[0]

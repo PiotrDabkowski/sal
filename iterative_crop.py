@@ -62,7 +62,7 @@ with tf.variable_scope('itercrop'):
 
 
     # now the losses...
-    area_loss = tf.reduce_sum(W*H)
+    area_loss = tf.reduce_sum(tf.log(W*H+0.01))
 
     # not sure how these 2 should exactly be defined...
     #preservation_loss = tf.reduce_mean(utils.loss_calc.abs_distance_loss(logits=tf.nn.softmax(preserved_scores), labels=labels, ref=1.))
@@ -71,11 +71,11 @@ with tf.variable_scope('itercrop'):
 
     # compose the full loss, area and smoothness coefs are quite important
 
-    full_loss =  2*area_loss + preservation_loss
+    full_loss =  area_loss + preservation_loss
 
 
 
-    opt = tf.train.AdamOptimizer(0.011, 0.9)
+    opt = tf.train.AdamOptimizer(0.02, 0.9)
 
     grads = opt.compute_gradients(full_loss, var_list=[X, Y, W, H])
     clipped_grads = [(tf.clip_by_value(grad, -5., 5.), var) for grad, var in grads]
@@ -132,7 +132,7 @@ def get_bb(sess, img, label):
             h0 = int(h * 224)
             min_loss = fl
         i+=1
-    return [(x0, y0, x0+w0, y0+h0)]
+    return [(x0, y0, x0+w0, y0+h0)], None
 
 
 

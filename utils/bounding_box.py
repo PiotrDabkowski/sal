@@ -3,6 +3,15 @@ import numpy as np
 import cv2
 CENTER_CROP = (32, 32, 192, 192)
 
+def simple_box_from_mask(mask, threshold, min_members=300, return_center_crop_on_failure=None):
+    k = np.asarray(zip(*(mask > threshold).nonzero()))
+    if len(k)<min_members:
+        print 'Bad'
+        return CENTER_CROP
+    maxes = np.max(k, axis=0)
+    mins = np.min(k, axis=0)
+    return (mins[1], mins[0], maxes[1]+1, maxes[0]+1)
+
 def box_from_mask(mask, threshold=0.5*255, eps=4, min_samples=5, min_members=300, return_center_crop_on_failure=True):
     ''' mask should be (H, W) np array'''
     dbscan = DBSCAN(eps=eps, min_samples=min_samples)

@@ -6,6 +6,7 @@ import warnings
 import random
 
 
+
 # -------------------------------------------
 synset = open(os.path.join(os.path.dirname(__file__), 'synset.txt')).read()
 SYNSET_TO_NAME= dict((e[:9], e[10:]) for e in synset.splitlines())
@@ -36,7 +37,7 @@ except:
     TRAIN_IMAGES = []
     VAL_IMAGES = []
 random.shuffle(VAL_IMAGES)
-#VAL_IMAGES = VAL_IMAGES[:5000]
+#VAL_IMAGES = VAL_IMAGES[:3000]
 
 # -------------------------------------------
 
@@ -72,10 +73,25 @@ val_imgs = [
 
 assert len(val_imgs) == NUM_VALIDATION_IMGS_PER_EXAMPLE
 
+def square_centrer_placement(size):
+    def square_centrer_crop_resize_op(im):
+        y, x = im.shape[:2]
+        longer = max(x, y)
+        shorter = min(x, y)
+        template = np.zeros((longer, longer, 3), np.float32)
+        off = (longer-shorter)/2
+        if x<y:
+            template[:,off:off+shorter,:] = im
+        else:
+            template[off:off+shorter,:,:] = im
+        return cv2.resize(template, size, interpolation=cv2.INTER_LINEAR)
+    return square_centrer_crop_resize_op
+
+
 IMAGE_VAL_PIPELINE = compose_ops([
     load(),
-    square_centrer_crop_resize(VALIDATION_CROP_FROM_SIZE),
     normalize(IMAGE_NET_PIXEL_MEAN, IMAGE_NET_PIXEL_STD),
+    square_centrer_crop_resize(VALIDATION_CROP_FROM_SIZE),
     #lambda x: x[:,:,[2,1,0]],
     parallelise_ops(val_imgs)
 ])

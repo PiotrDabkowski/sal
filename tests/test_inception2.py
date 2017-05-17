@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__))))
 
-from blocks import resnet
+from blocks import inception2
 import tensorflow as tf
 from utils import meta_restorer
 from datasets import imagenet
@@ -17,16 +17,16 @@ images2 = tf.placeholder(tf.float32, (None, 224, 224, 3), name='i2')
 
 
 with tf.variable_scope('r1'):
-    p1 = resnet.inference(images, False, False)
+    p1 = inception2.inference(images, False, False)
     probs = tf.nn.softmax(p1)
 
 with tf.variable_scope('r1'):
-    p2 = resnet.inference(images2, False, True)
+    p2 = inception2.inference(images2, False, True)
     probs2 = tf.nn.softmax(p2)
 
 
 
-restore_op = meta_restorer.restore_in_scope(resnet.CKPT, 'r1')
+restore_op = meta_restorer.restore_in_scope(inception2.CKPT, 'r1')
 sess.run(restore_op)
 
 
@@ -54,7 +54,6 @@ for imgs,pro, p in zip((images, images2), (probs, probs2), (p1, p2)):
                      },
                      printable_vars=['acc-1', 'acc-5', 'loss'],
                      )
-
     nt.validate()
 
 

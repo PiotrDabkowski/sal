@@ -72,12 +72,12 @@ smoothness_loss = utils.mask.smoothness_loss(masks)
 # not sure how these 2 should exactly be defined...
 preservation_loss = tf.reduce_mean(utils.loss_calc.abs_distance_loss(logits=tf.nn.softmax(preserved_scores), labels=labels, ref=1.))
 destroyer_loss = tf.reduce_mean((utils.loss_calc.abs_distance_loss(logits=tf.nn.softmax(destroyed_scores), labels=labels, ref=0.)+0.0005)**0.33)
-#preservation_loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=preserved_scores, labels=labels))
+preservation_loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=preserved_scores, labels=labels))
 #destroyer_loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=-destroyed_scores, labels=labels))
 
 # compose the full loss, area and smoothness coefs are quite important
 
-full_loss =  BATCH_SIZE*(0.15*smoothness_loss + 0.6*area_loss + preservation_loss + 2*destroyer_loss)/16.
+full_loss =  0.15*smoothness_loss + 0.6*area_loss + destroyer_loss
 opt_op = tf.train.AdamOptimizer(0.02).minimize(full_loss, var_list=[vals])
 assert len(tf.trainable_variables())==1
 
@@ -94,7 +94,7 @@ blur_vals = tf.assign(vals, tf.squeeze(utils.gaussian.gaussian_blur(tf.expand_di
 reposition_vals = tf.assign(vals, tf.clip_by_value(vals, 0.01, 0.99))
 
 GT_BOXES = imagenet.get_boxes_by_img_num()
-
+imagenet.VAL_IMAGES = [e for e in imagenet.VAL_IMAGES if 'n03814639' in e]
 
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
@@ -103,11 +103,10 @@ with tf.Session() as sess:
     too = 0
     all_ious = []
     for batch in xrange(len(imagenet.VAL_IMAGES)/BATCH_SIZE):
-        too += 1
-        if too < 9:
-            continue
         paths = imagenet.VAL_IMAGES[batch*BATCH_SIZE:batch*BATCH_SIZE+BATCH_SIZE]
-
+        too+=1
+        if too<0:
+            continue
         sess.run(reset_all, {
             new_images: np.concatenate(map(imagenet.IMAGE_VAL_PIPELINE, paths), 0),
             new_labels: np.concatenate(map(imagenet.LABEL_VAL_PIPELINE, paths), 0)
@@ -140,7 +139,7 @@ with tf.Session() as sess:
                     pi0 = utils.bounding_box.draw_box(pi0, box, text='%.3f' % pl)
 
                     mi0 = mi[example].astype(np.uint8)
-                    mi0[mi0<0.6*255] = 0
+                    #mi0[mi0<0.6*255] = 0
                     cv2.imwrite('iter%d.jpg'%example, np.concatenate((pi0, di0, mi0), 0))
             i+=1
         print 'Cumulative accuracy from %d examples' % len(all_ious), np.mean(np.array(all_ious)>0.5)
